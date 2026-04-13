@@ -92,14 +92,10 @@ fn main() {
         handles.push(handle);
     }
 
-    let output_iconset_only = match (
-        &options.target,
-        &options.output_icns,
-        &options.output_iconset,
-    ) {
-        (None, None, Some(output_iconset)) => Some(output_iconset),
-        _ => None,
-    };
+    let mut output_iconset_only = None;
+    if options.targets.is_empty() && options.output_icns.is_none() {
+        output_iconset_only = options.output_iconset.as_ref();
+    }
 
     // Deduplicate this `match` with the one that happens after handle joining.
     let output_progress_bar_type = match output_iconset_only {
@@ -133,20 +129,16 @@ fn main() {
                 )
                 .unwrap();
 
-            let icns_assignment_path = options
-                .target
-                .as_ref()
-                .unwrap_or(&final_output_paths.icns_path);
+            for target in &options.targets {
+                output_icon_conversion
+                    .assign_icns(&options, &final_output_paths.icns_path, target)
+                    .unwrap();
+            }
 
-            output_icon_conversion
-                .assign_icns(
-                    &options,
-                    &final_output_paths.icns_path,
-                    icns_assignment_path,
-                )
-                .unwrap();
-
-            icns_assignment_path
+            options
+                .targets
+                .first()
+                .unwrap_or(&final_output_paths.icns_path)
         }
     };
 

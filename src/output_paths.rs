@@ -20,39 +20,47 @@ impl PotentialOutputPaths {
             iconset_dir: None,
             icns_path: None,
         };
-        match (
-            &options.target,
-            &options.output_iconset,
-            &options.output_icns,
-        ) {
-            (Some(target), output_iconset, output_icns) => {
+        if !options.targets.is_empty() {
+            for target in &options.targets {
                 println!(
                     "[{}] => assign to [{}]",
                     options.mask_path.display(),
                     target.display()
                 );
-                Self::alt_outputs(options, &mut output_paths, output_iconset, output_icns);
             }
-            (None, None, None) => {
-                let iconset_dir_value = options.mask_path.with_extension("iconset");
-                let icns_path_value = options.mask_path.with_extension("icns");
-                println!(
-                    "[{}] => [{}]",
-                    options.mask_path.display(),
-                    iconset_dir_value.display()
-                );
-                println!(
-                    "[{}] => [{}]",
-                    options.mask_path.display(),
-                    icns_path_value.display()
-                );
-                output_paths.iconset_dir = Some(iconset_dir_value);
-                output_paths.icns_path = Some(icns_path_value);
-            }
-            (None, output_iconset, output_icns) => {
-                Self::alt_outputs(options, &mut output_paths, output_iconset, output_icns);
-            }
+            Self::alt_outputs(
+                options,
+                &mut output_paths,
+                &options.output_iconset,
+                &options.output_icns,
+            );
+            return output_paths;
         }
+
+        if options.output_iconset.is_none() && options.output_icns.is_none() {
+            let iconset_dir_value = options.mask_path.with_extension("iconset");
+            let icns_path_value = options.mask_path.with_extension("icns");
+            println!(
+                "[{}] => [{}]",
+                options.mask_path.display(),
+                iconset_dir_value.display()
+            );
+            println!(
+                "[{}] => [{}]",
+                options.mask_path.display(),
+                icns_path_value.display()
+            );
+            output_paths.iconset_dir = Some(iconset_dir_value);
+            output_paths.icns_path = Some(icns_path_value);
+            return output_paths;
+        }
+
+        Self::alt_outputs(
+            options,
+            &mut output_paths,
+            &options.output_iconset,
+            &options.output_icns,
+        );
         output_paths
     }
 

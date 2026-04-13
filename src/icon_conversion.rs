@@ -23,11 +23,11 @@ impl ProgressBarType {
             ProgressBarType::Input => 1,
             ProgressBarType::Conversion => 13 + if options.badge.is_some() { 1 } else { 0 },
             ProgressBarType::OutputWithAssignment => {
-                2 + if matches!(options.set_icon_using, SetIconUsing::Rez) {
-                    7
-                } else {
-                    0
-                }
+                let assignment_steps = match options.set_icon_using {
+                    SetIconUsing::Rez => 7,
+                    _ => 1,
+                };
+                1 + assignment_steps * options.targets.len() as u64
             }
             ProgressBarType::OutputIcns => 1,
         }
@@ -643,20 +643,21 @@ impl IconConversion {
         let args = CommandArgs::new();
         run_command(OSASCRIPT_COMMAND, &args, Some(stdin.as_bytes()))?;
 
-        if target_metadata.is_dir() {
-            // TODO: check for network volume first, only then the appropriate path.
-            if metadata(target_path.join("Icon\r")).is_err()
-                && metadata(target_path.join(".VolumeIcon.icns")).is_err()
-            {
-                eprintln!("Icon was not successfully assigned to the target folder.");
-                exit(1);
-            }
-        } else if options.target.is_some() {
+        if !target_metadata.is_dir() {
             // TODO: this is usually overwritten by the progress bars.
             eprintln!(
                 "Target is not a folder. Please check manually if the icon was assigned correctly."
             );
-        };
+            return Ok(());
+        }
+
+        // TODO: check for network volume first, only then the appropriate path.
+        if metadata(target_path.join("Icon\r")).is_err()
+            && metadata(target_path.join(".VolumeIcon.icns")).is_err()
+        {
+            eprintln!("Icon was not successfully assigned to the target folder.");
+            exit(1);
+        }
 
         Ok(())
     }

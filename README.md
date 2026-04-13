@@ -29,6 +29,12 @@ Use a mask to assign an icon to a folder:
 folderify mask.png /path/to/folder
 ```
 
+Use the same mask for multiple folders in one run:
+
+```shell
+folderify mask.png /path/to/folder-1 /path/to/folder-2 /path/to/folder-3
+```
+
 Generate `mask.icns` and `mask.iconset` files:
 
 ```shell

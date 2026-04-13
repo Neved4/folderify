@@ -59,6 +59,14 @@ test("Assign folder icon", async () => {
   expect(await tempDir.join("Icon\r").exists()).toBe(true);
 });
 
+test("Assign the same folder icon to multiple targets", async () => {
+  const tempDir1 = await Path.makeTempDir();
+  const tempDir2 = await Path.makeTempDir();
+  await shellOut([EXAMPLES.join("src/apple.png"), tempDir1, tempDir2]);
+  expect(await tempDir1.join("Icon\r").exists()).toBe(true);
+  expect(await tempDir2.join("Icon\r").exists()).toBe(true);
+});
+
 test("Assign folder icon using Rez", async () => {
   const tempDir = await Path.makeTempDir();
   await shellOut([

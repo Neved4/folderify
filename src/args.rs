@@ -23,13 +23,13 @@ struct FolderifyArgs {
     #[clap(verbatim_doc_comment)]
     mask: Option<PathBuf>,
 
-    /// Target file or folder. If a target is specified, the resulting icon will
-    /// be applied to the target file/folder. Else (unless --output-icns or
+    /// Target files or folders. If any targets are specified, the resulting icon
+    /// will be applied to each target. Else (unless --output-icns or
     /// --output-iconset is specified), a .iconset folder and .icns file will be
     /// created in the same folder as the mask (you can use "Get Info" in Finder
     /// to copy the icon from the .icns file).
     #[clap(verbatim_doc_comment)]
-    target: Option<PathBuf>,
+    targets: Vec<PathBuf>,
 
     /// Write the `.icns` file to the given path.
     /// (Will be written even if a target is also specified.)
@@ -142,7 +142,7 @@ pub struct Options {
     pub mask_path: PathBuf,
     pub color_scheme: ColorScheme,
     pub no_trim: bool,
-    pub target: Option<PathBuf>,
+    pub targets: Vec<PathBuf>,
     pub folder_style: FolderStyle,
     pub empty_folder: bool,
     pub output_icns: Option<PathBuf>,
@@ -263,7 +263,7 @@ pub fn get_options() -> Options {
         mask_path: mask,
         color_scheme: map_color_scheme_auto(args.color_scheme, folder_style),
         no_trim: args.no_trim,
-        target: args.target,
+        targets: args.targets,
         folder_style,
         empty_folder: args.empty_folder,
         output_icns: args.output_icns,
