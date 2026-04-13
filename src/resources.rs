@@ -18,7 +18,10 @@ pub struct IconInputs {
 }
 
 fn tahoe_iconset_name(folder_color: FolderColor, empty_folder: bool) -> String {
-    let folder_state = if empty_folder { "empty" } else { "non-empty" };
+    let folder_state = match empty_folder {
+        true => "empty",
+        false => "non-empty",
+    };
     if folder_color == FolderColor::Multicolor {
         return format!("GenericFolderIcon.{folder_state}.Tahoe.iconset");
     }

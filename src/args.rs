@@ -300,9 +300,7 @@ pub fn get_options() -> Options {
         Some(SetIconUsingOrAuto::Fileicon) => SetIconUsing::Fileicon,
         _ => SetIconUsing::Osascript,
     };
-    if folder_style != FolderStyle::Tahoe
-        && args.folder_color != FolderColor::Multicolor
-    {
+    if folder_style != FolderStyle::Tahoe && args.folder_color != FolderColor::Multicolor {
         eprintln!(
             "Folder tint variants are only available for Tahoe. \
 Ignoring `--folder-color`."
@@ -327,15 +325,11 @@ Ignoring `--folder-color`."
     }
 }
 
-fn normalized_folder_color(
-    folder_style: FolderStyle,
-    folder_color: FolderColor,
-) -> FolderColor {
-    if folder_style == FolderStyle::Tahoe {
-        folder_color
-    } else {
-        FolderColor::Multicolor
+fn normalized_folder_color(folder_style: FolderStyle, folder_color: FolderColor) -> FolderColor {
+    if folder_style != FolderStyle::Tahoe {
+        return FolderColor::Multicolor;
     }
+    folder_color
 }
 
 fn map_color_scheme_auto(
