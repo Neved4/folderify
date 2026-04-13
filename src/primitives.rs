@@ -32,6 +32,10 @@ impl RGBColor {
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
+
+    pub fn from_components(components: [u8; 3]) -> Self {
+        Self::new(components[0], components[1], components[2])
+    }
 }
 
 impl Display for RGBColor {

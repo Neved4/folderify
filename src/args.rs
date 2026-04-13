@@ -58,6 +58,11 @@ struct FolderifyArgs {
     #[clap(long, value_enum, default_value_t = ColorSchemeOrAuto::Auto)]
     color_scheme: ColorSchemeOrAuto,
 
+    /// Tahoe folder color. `multicolor` keeps the default macOS folder look,
+    /// while the tinted variants use Tahoe's tinted folder rendering.
+    #[clap(long, value_enum, default_value_t = FolderColor::Multicolor)]
+    folder_color: FolderColor,
+
     /// Don't trim margins from the mask.
     /// By default (i.e. without this flag), transparent margins are trimmed from all 4 sides.
     #[clap(long, verbatim_doc_comment)]
@@ -95,6 +100,19 @@ pub enum ColorScheme {
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq, Copy)]
+pub enum FolderColor {
+    Multicolor,
+    Blue,
+    Graphite,
+    Green,
+    Orange,
+    Pink,
+    Purple,
+    Red,
+    Yellow,
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq, Copy)]
 pub enum Badge {
     Alias,
     Locked,
@@ -110,6 +128,28 @@ impl Display for ColorScheme {
                 Self::Dark => "dark",
             }
         )
+    }
+}
+
+impl FolderColor {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Multicolor => "multicolor",
+            Self::Blue => "blue",
+            Self::Graphite => "graphite",
+            Self::Green => "green",
+            Self::Orange => "orange",
+            Self::Pink => "pink",
+            Self::Purple => "purple",
+            Self::Red => "red",
+            Self::Yellow => "yellow",
+        }
+    }
+}
+
+impl Display for FolderColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -141,6 +181,7 @@ enum SetIconUsingOrAuto {
 pub struct Options {
     pub mask_path: PathBuf,
     pub color_scheme: ColorScheme,
+    pub folder_color: FolderColor,
     pub no_trim: bool,
     pub target: Option<PathBuf>,
     pub folder_style: FolderStyle,
@@ -259,9 +300,18 @@ pub fn get_options() -> Options {
         Some(SetIconUsingOrAuto::Fileicon) => SetIconUsing::Fileicon,
         _ => SetIconUsing::Osascript,
     };
+    if folder_style != FolderStyle::Tahoe
+        && args.folder_color != FolderColor::Multicolor
+    {
+        eprintln!(
+            "Folder tint variants are only available for Tahoe. \
+Ignoring `--folder-color`."
+        );
+    }
     Options {
         mask_path: mask,
         color_scheme: map_color_scheme_auto(args.color_scheme, folder_style),
+        folder_color: normalized_folder_color(folder_style, args.folder_color),
         no_trim: args.no_trim,
         target: args.target,
         folder_style,
@@ -274,6 +324,17 @@ pub fn get_options() -> Options {
         reveal: args.reveal,
         verbose,
         debug,
+    }
+}
+
+fn normalized_folder_color(
+    folder_style: FolderStyle,
+    folder_color: FolderColor,
+) -> FolderColor {
+    if folder_style == FolderStyle::Tahoe {
+        folder_color
+    } else {
+        FolderColor::Multicolor
     }
 }
 

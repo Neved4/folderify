@@ -35,7 +35,7 @@ impl ProgressBarType {
 }
 
 use crate::{
-    args::{Badge, ColorScheme, FolderStyle, Options, SetIconUsing},
+    args::{Badge, ColorScheme, FolderColor, FolderStyle, Options, SetIconUsing},
     command::{
         run_command, run_magick, DEREZ_COMMAND, FILEICON_COMMAND, ICONUTIL_COMMAND,
         OSASCRIPT_COMMAND, REZ_COMMAND, SETFILE_COMMAND, SIPS_COMMAND,
@@ -72,24 +72,21 @@ struct MaskProfile {
     engraving: EngravingInputs,
 }
 
-fn mask_dimensions(icon_size: u32) -> Dimensions {
-    Dimensions {
-        width: icon_size * 3 / 4,
-        height: icon_size / 2,
-    }
+struct TintedPalette {
+    fill: RGBColor,
+    top_bezel: RGBColor,
+    bottom_bezel: RGBColor,
 }
 
-fn bezel_inputs(
-    color: RGBColor,
-    blur: BlurDown,
-    mask_operation: CompositingOperation,
-    opacity: f32,
-) -> BezelInputs {
-    BezelInputs {
-        color,
-        blur,
-        mask_operation,
-        opacity,
+fn tinted_palette(
+    fill: [u8; 3],
+    top_bezel: [u8; 3],
+    bottom_bezel: [u8; 3],
+) -> TintedPalette {
+    TintedPalette {
+        fill: RGBColor::from_components(fill),
+        top_bezel: RGBColor::from_components(top_bezel),
+        bottom_bezel: RGBColor::from_components(bottom_bezel),
     }
 }
 
@@ -265,39 +262,106 @@ impl IconResolution {
     }
 }
 
-fn tahoe_mask_profile(resolution: &IconResolution) -> MaskProfile {
+fn tahoe_multicolor_mask_profile(resolution: &IconResolution) -> MaskProfile {
     let size = resolution.size();
     MaskProfile {
-        mask_dimensions: mask_dimensions(size),
-        offset_y: resolution.offset_y() - (size as i32 / 160),
+        mask_dimensions: Dimensions {
+            width: size * 3 / 4,
+            height: size / 2,
+        },
+        offset_y: resolution.offset_y(),
         engraving: EngravingInputs {
-            fill_color: RGBColor::new(52, 104, 148),
-            fill_opacity: 0.84,
-            top_bezel: bezel_inputs(
-                RGBColor::new(48, 96, 136),
-                BlurDown {
+            fill_color: RGBColor::new(74, 141, 172),
+            fill_opacity: 0.5,
+            top_bezel: BezelInputs {
+                color: RGBColor::new(58, 152, 208),
+                blur: BlurDown {
                     spread_px: 0,
-                    page_y: 1,
+                    page_y: 2,
                 },
-                CompositingOperation::Dst_Out,
-                0.18,
-            ),
-            bottom_bezel: bezel_inputs(
-                RGBColor::new(102, 138, 170),
-                resolution.bottom_bezel_blur_down(),
-                CompositingOperation::Dst_In,
-                0.2,
-            ),
+                mask_operation: CompositingOperation::Dst_In,
+                opacity: 0.5,
+            },
+            bottom_bezel: BezelInputs {
+                color: RGBColor::new(174, 225, 253),
+                blur: resolution.bottom_bezel_blur_down(),
+                mask_operation: CompositingOperation::Dst_Out,
+                opacity: resolution.bottom_bezel_alpha(),
+            },
         },
     }
 }
 
-fn big_sur_mask_profile(
+fn tahoe_tinted_palette(folder_color: FolderColor) -> TintedPalette {
+    match folder_color {
+        FolderColor::Multicolor => unreachable!(),
+        FolderColor::Blue => {
+            tinted_palette([14, 117, 243], [10, 92, 201], [50, 131, 255])
+        }
+        FolderColor::Graphite => {
+            tinted_palette([129, 128, 133], [104, 103, 108], [142, 141, 147])
+        }
+        FolderColor::Green => {
+            tinted_palette([44, 195, 68], [27, 156, 49], [68, 207, 86])
+        }
+        FolderColor::Orange => {
+            tinted_palette([241, 121, 36], [205, 92, 16], [253, 135, 62])
+        }
+        FolderColor::Pink => {
+            tinted_palette([240, 25, 73], [205, 12, 54], [252, 55, 92])
+        }
+        FolderColor::Purple => {
+            tinted_palette([198, 0, 229], [154, 0, 181], [210, 44, 240])
+        }
+        FolderColor::Red => {
+            tinted_palette([240, 38, 51], [207, 18, 30], [252, 63, 73])
+        }
+        FolderColor::Yellow => {
+            tinted_palette([243, 198, 9], [208, 163, 0], [254, 210, 49])
+        }
+    }
+}
+
+fn tahoe_tinted_mask_profile(
     resolution: &IconResolution,
-    color_scheme: ColorScheme,
+    folder_color: FolderColor,
 ) -> MaskProfile {
+    let size = resolution.size();
+    let palette = tahoe_tinted_palette(folder_color);
     MaskProfile {
-        mask_dimensions: mask_dimensions(resolution.size()),
+        mask_dimensions: Dimensions {
+            width: size * 3 / 4,
+            height: size / 2,
+        },
+        offset_y: resolution.offset_y() - (size as i32 / 160),
+        engraving: EngravingInputs {
+            fill_color: palette.fill,
+            fill_opacity: 0.5,
+            top_bezel: BezelInputs {
+                color: palette.top_bezel,
+                blur: BlurDown {
+                    spread_px: 0,
+                    page_y: 2,
+                },
+                mask_operation: CompositingOperation::Dst_In,
+                opacity: 0.5,
+            },
+            bottom_bezel: BezelInputs {
+                color: palette.bottom_bezel,
+                blur: resolution.bottom_bezel_blur_down(),
+                mask_operation: CompositingOperation::Dst_Out,
+                opacity: resolution.bottom_bezel_alpha(),
+            },
+        },
+    }
+}
+
+fn big_sur_mask_profile(resolution: &IconResolution, color_scheme: ColorScheme) -> MaskProfile {
+    MaskProfile {
+        mask_dimensions: Dimensions {
+            width: resolution.size() * 3 / 4,
+            height: resolution.size() / 2,
+        },
         offset_y: resolution.offset_y(),
         engraving: EngravingInputs {
             fill_color: match color_scheme {
@@ -305,21 +369,21 @@ fn big_sur_mask_profile(
                 ColorScheme::Dark => RGBColor::new(6, 111, 194),
             },
             fill_opacity: 0.5,
-            top_bezel: bezel_inputs(
-                RGBColor::new(58, 152, 208),
-                BlurDown {
+            top_bezel: BezelInputs {
+                color: RGBColor::new(58, 152, 208),
+                blur: BlurDown {
                     spread_px: 0,
                     page_y: 2,
                 },
-                CompositingOperation::Dst_In,
-                0.5,
-            ),
-            bottom_bezel: bezel_inputs(
-                RGBColor::new(174, 225, 253),
-                resolution.bottom_bezel_blur_down(),
-                CompositingOperation::Dst_Out,
-                resolution.bottom_bezel_alpha(),
-            ),
+                mask_operation: CompositingOperation::Dst_In,
+                opacity: 0.5,
+            },
+            bottom_bezel: BezelInputs {
+                color: RGBColor::new(174, 225, 253),
+                blur: resolution.bottom_bezel_blur_down(),
+                mask_operation: CompositingOperation::Dst_Out,
+                opacity: resolution.bottom_bezel_alpha(),
+            },
         },
     }
 }
@@ -448,9 +512,10 @@ impl IconConversion {
         )?;
 
         self.step("Setting fill opacity");
-        let fill = self.simple_operation(&fill_colorized, "2.2_FILL", |args: &mut CommandArgs| {
-            args.opacity(inputs.fill_opacity);
-        })?;
+        let fill =
+            self.simple_operation(&fill_colorized, "2.2_FILL", |args: &mut CommandArgs| {
+                args.opacity(inputs.fill_opacity);
+            })?;
 
         self.step("Complementing mask for top bezel");
         let top_bezel_complement = self.simple_operation(
@@ -577,9 +642,14 @@ impl IconConversion {
         //     println!("[Starting] {}", inputs.resolution);
         // }
 
-        let mask_profile = match icon_inputs.folder_style {
-            FolderStyle::Tahoe => tahoe_mask_profile(&icon_inputs.resolution),
-            FolderStyle::BigSur => {
+        let mask_profile = match (icon_inputs.folder_style, icon_inputs.folder_color) {
+            (FolderStyle::Tahoe, FolderColor::Multicolor) => {
+                tahoe_multicolor_mask_profile(&icon_inputs.resolution)
+            }
+            (FolderStyle::Tahoe, folder_color) => {
+                tahoe_tinted_mask_profile(&icon_inputs.resolution, folder_color)
+            }
+            (FolderStyle::BigSur, _) => {
                 big_sur_mask_profile(&icon_inputs.resolution, icon_inputs.color_scheme)
             }
         };

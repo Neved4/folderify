@@ -41,6 +41,12 @@ By default, `folderify` uses your system's current light/dark mode. Use `--color
 folderify --color-scheme dark mask.png
 ```
 
+On macOS Tahoe, the default folder color is `multicolor`. Use `--folder-color` to switch to one of the tinted Tahoe folder variants:
+
+```shell
+folderify --macOS 26 --folder-color blue mask.png
+```
+
 Note:
 
 - There is currently no simple way to set an icon that will automatically switch between light and dark when you switch the entire OS. You can only assign one version of an icon to a folder.
@@ -167,6 +173,13 @@ Options:
           
           [default: auto]
           [possible values: auto, light, dark]
+
+      --folder-color <FOLDER_COLOR>
+          Tahoe folder color. `multicolor` keeps the default macOS folder look,
+          while the tinted variants use Tahoe's tinted folder rendering
+          
+          [default: multicolor]
+          [possible values: multicolor, blue, graphite, green, orange, pink, purple, red, yellow]
 
       --no-trim
           Don't trim margins from the mask.

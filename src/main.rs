@@ -34,6 +34,13 @@ fn main() {
         options.mask_path.display(),
         options.color_scheme
     );
+    if options.folder_style == args::FolderStyle::Tahoe {
+        println!(
+            "[{}] Using folder color: {}",
+            options.mask_path.display(),
+            options.folder_color
+        );
+    }
 
     let working_dir = WorkingDir::new();
     if options.debug {
@@ -83,6 +90,7 @@ fn main() {
                     &IconInputs {
                         folder_style: options.folder_style,
                         color_scheme: options.color_scheme,
+                        folder_color: options.folder_color,
                         resolution,
                         empty_folder: options.empty_folder,
                     },

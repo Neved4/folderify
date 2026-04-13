@@ -89,6 +89,22 @@ test("Test that `--color-scheme dark` is accepted.", async () => {
   await shellOut([["--color-scheme", "dark"], EXAMPLES.join("src/apple.png")]);
 });
 
+test("Test that Tahoe `--folder-color multicolor` is accepted.", async () => {
+  await shellOut([
+    ["--macOS", "26"],
+    ["--folder-color", "multicolor"],
+    EXAMPLES.join("src/apple.png"),
+  ]);
+});
+
+test("Test that Tahoe `--folder-color blue` is accepted.", async () => {
+  await shellOut([
+    ["--macOS", "26"],
+    ["--folder-color", "blue"],
+    EXAMPLES.join("src/apple.png"),
+  ]);
+});
+
 test("Test that `--no-progress` is accepted.", async () => {
   await shellOut(["--no-progress", EXAMPLES.join("src/apple.png")]);
 });
