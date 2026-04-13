@@ -61,8 +61,36 @@ pub struct BezelInputs {
 
 pub struct EngravingInputs {
     pub fill_color: RGBColor,
+    pub fill_opacity: f32,
     pub top_bezel: BezelInputs,
     pub bottom_bezel: BezelInputs,
+}
+
+struct MaskProfile {
+    mask_dimensions: Dimensions,
+    offset_y: i32,
+    engraving: EngravingInputs,
+}
+
+fn mask_dimensions(icon_size: u32) -> Dimensions {
+    Dimensions {
+        width: icon_size * 3 / 4,
+        height: icon_size / 2,
+    }
+}
+
+fn bezel_inputs(
+    color: RGBColor,
+    blur: BlurDown,
+    mask_operation: CompositingOperation,
+    opacity: f32,
+) -> BezelInputs {
+    BezelInputs {
+        color,
+        blur,
+        mask_operation,
+        opacity,
+    }
 }
 
 #[derive(Debug)]
@@ -237,6 +265,65 @@ impl IconResolution {
     }
 }
 
+fn tahoe_mask_profile(resolution: &IconResolution) -> MaskProfile {
+    let size = resolution.size();
+    MaskProfile {
+        mask_dimensions: mask_dimensions(size),
+        offset_y: resolution.offset_y() - (size as i32 / 160),
+        engraving: EngravingInputs {
+            fill_color: RGBColor::new(52, 104, 148),
+            fill_opacity: 0.84,
+            top_bezel: bezel_inputs(
+                RGBColor::new(48, 96, 136),
+                BlurDown {
+                    spread_px: 0,
+                    page_y: 1,
+                },
+                CompositingOperation::Dst_Out,
+                0.18,
+            ),
+            bottom_bezel: bezel_inputs(
+                RGBColor::new(102, 138, 170),
+                resolution.bottom_bezel_blur_down(),
+                CompositingOperation::Dst_In,
+                0.2,
+            ),
+        },
+    }
+}
+
+fn big_sur_mask_profile(
+    resolution: &IconResolution,
+    color_scheme: ColorScheme,
+) -> MaskProfile {
+    MaskProfile {
+        mask_dimensions: mask_dimensions(resolution.size()),
+        offset_y: resolution.offset_y(),
+        engraving: EngravingInputs {
+            fill_color: match color_scheme {
+                ColorScheme::Light => RGBColor::new(8, 134, 206),
+                ColorScheme::Dark => RGBColor::new(6, 111, 194),
+            },
+            fill_opacity: 0.5,
+            top_bezel: bezel_inputs(
+                RGBColor::new(58, 152, 208),
+                BlurDown {
+                    spread_px: 0,
+                    page_y: 2,
+                },
+                CompositingOperation::Dst_In,
+                0.5,
+            ),
+            bottom_bezel: bezel_inputs(
+                RGBColor::new(174, 225, 253),
+                resolution.bottom_bezel_blur_down(),
+                CompositingOperation::Dst_Out,
+                resolution.bottom_bezel_alpha(),
+            ),
+        },
+    }
+}
+
 impl Display for IconResolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -361,10 +448,9 @@ impl IconConversion {
         )?;
 
         self.step("Setting fill opacity");
-        let fill =
-            self.simple_operation(&fill_colorized, "2.2_FILL", |args: &mut CommandArgs| {
-                args.opacity(0.5);
-            })?;
+        let fill = self.simple_operation(&fill_colorized, "2.2_FILL", |args: &mut CommandArgs| {
+            args.opacity(inputs.fill_opacity);
+        })?;
 
         self.step("Complementing mask for top bezel");
         let top_bezel_complement = self.simple_operation(
@@ -491,20 +577,21 @@ impl IconConversion {
         //     println!("[Starting] {}", inputs.resolution);
         // }
 
-        let size = icon_inputs.resolution.size();
-        let offset_y = icon_inputs.resolution.offset_y();
+        let mask_profile = match icon_inputs.folder_style {
+            FolderStyle::Tahoe => tahoe_mask_profile(&icon_inputs.resolution),
+            FolderStyle::BigSur => {
+                big_sur_mask_profile(&icon_inputs.resolution, icon_inputs.color_scheme)
+            }
+        };
 
         self.step_unincremented("Sizing mask");
         let sized_mask_path = self
             .sized_mask(
                 full_mask_path,
                 &ScaledMaskInputs {
-                    icon_size: size,
-                    mask_dimensions: Dimensions {
-                        width: size * 3 / 4,
-                        height: size / 2,
-                    },
-                    offset_y,
+                    icon_size: icon_inputs.resolution.size(),
+                    mask_dimensions: mask_profile.mask_dimensions,
+                    offset_y: mask_profile.offset_y,
                 },
             )
             .unwrap();
@@ -512,34 +599,11 @@ impl IconConversion {
         // TODO
         let template_icon = get_folder_icon(icon_inputs);
 
-        let fill_color = match (icon_inputs.folder_style, icon_inputs.color_scheme) {
-            (FolderStyle::Tahoe, _) => RGBColor::new(74, 141, 172),
-            (_, ColorScheme::Light) => RGBColor::new(8, 134, 206),
-            (_, ColorScheme::Dark) => RGBColor::new(6, 111, 194),
-        };
-
         let engraved = self.engrave(
             &sized_mask_path,
             template_icon,
             output_path,
-            &EngravingInputs {
-                fill_color,
-                top_bezel: BezelInputs {
-                    color: RGBColor::new(58, 152, 208),
-                    blur: BlurDown {
-                        spread_px: 0,
-                        page_y: 2,
-                    },
-                    mask_operation: CompositingOperation::Dst_In,
-                    opacity: 0.5,
-                },
-                bottom_bezel: BezelInputs {
-                    color: RGBColor::new(174, 225, 253),
-                    blur: icon_inputs.resolution.bottom_bezel_blur_down(),
-                    mask_operation: CompositingOperation::Dst_Out,
-                    opacity: icon_inputs.resolution.bottom_bezel_alpha(),
-                },
-            },
+            &mask_profile.engraving,
         );
         if let Some(badge) = options.badge {
             self.badge_in_place(output_path, badge, &icon_inputs.resolution)?;
