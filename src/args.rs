@@ -242,7 +242,6 @@ pub fn get_options() -> Options {
             mac_os,
             &["26"], // Note: macOS 16 through 25 do not exist.
         ) {
-            eprintln!("Warning: macOS Tahoe is still in beta. The icon may not match the final macOS 26 release.");
             FolderStyle::Tahoe
         } else {
             eprintln!(
