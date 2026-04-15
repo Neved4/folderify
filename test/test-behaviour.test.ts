@@ -25,8 +25,21 @@ async function shellOut(
   return (await cmd(args)).shellOut();
 }
 
+async function stdoutFor(
+  args: ConstructorParameters<typeof PrintableShellCommand>[1],
+) {
+  const { stdout } = (await cmd(args)).spawn({
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  return new Response(Readable.from(stdout)).text();
+}
+
 test("Help flag", async () => {
   await shellOut(["--help"]);
+});
+
+test("Help flag lists `--folder-color`.", async () => {
+  expect(await stdoutFor(["--help"])).toMatch("--folder-color");
 });
 
 test("Generate icon file", async () => {
