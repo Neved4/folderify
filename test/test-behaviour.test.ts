@@ -44,9 +44,11 @@ test("Help flag lists `--folder-color`.", async () => {
 
 test("Help flag lists `auto` as the default folder color.", async () => {
   const stdout = await stdoutFor(["--help"]);
-  expect(stdout).toMatch("[default: auto]");
   expect(stdout).toMatch(
-    "[possible values: auto, multicolor, blue, graphite, green, orange, pink, purple, red, yellow]",
+    /--folder-color <FOLDER_COLOR>[\s\S]*?\[default: auto\]/,
+  );
+  expect(stdout).toMatch(
+    /--folder-color <FOLDER_COLOR>[\s\S]*?\[possible values: auto, multicolor, blue, graphite, green, orange, pink, purple, red, yellow\]/,
   );
 });
 
