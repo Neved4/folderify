@@ -478,7 +478,6 @@ fn current_macOS_version() -> String {
 #[cfg(test)]
 mod tests {
     use crate::args::{
-        current_system_folder_color,
         normalized_folder_color,
         parse_system_accent_color,
         FolderColor,
@@ -521,19 +520,14 @@ mod tests {
     }
 
     #[test]
-    fn test_auto_folder_color_matches_current_system_expectations() {
-        let current = current_system_folder_color();
-        assert!(matches!(
-            current,
-            FolderColor::Multicolor
-                | FolderColor::Blue
-                | FolderColor::Graphite
-                | FolderColor::Green
-                | FolderColor::Orange
-                | FolderColor::Pink
-                | FolderColor::Purple
-                | FolderColor::Red
-                | FolderColor::Yellow
-        ));
+    fn test_tahoe_explicit_folder_color_is_preserved() {
+        assert_eq!(
+            normalized_folder_color(FolderStyle::Tahoe, FolderColorOrAuto::Blue),
+            FolderColor::Blue
+        );
+        assert_eq!(
+            normalized_folder_color(FolderStyle::Tahoe, FolderColorOrAuto::Purple),
+            FolderColor::Purple
+        );
     }
 }
