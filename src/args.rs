@@ -58,10 +58,11 @@ struct FolderifyArgs {
     #[clap(long, value_enum, default_value_t = ColorSchemeOrAuto::Auto)]
     color_scheme: ColorSchemeOrAuto,
 
-    /// Tahoe folder color. `multicolor` keeps the default macOS folder look,
-    /// while the tinted variants use Tahoe's tinted folder rendering.
-    #[clap(long, value_enum, default_value_t = FolderColor::Multicolor)]
-    folder_color: FolderColor,
+    /// Tahoe folder color. `auto` matches the current Tahoe icon theme color,
+    /// `multicolor` keeps the default macOS folder look, and the tinted
+    /// variants use Tahoe's tinted folder rendering.
+    #[clap(long, value_enum, default_value_t = FolderColorOrAuto::Auto)]
+    folder_color: FolderColorOrAuto,
 
     /// Don't trim margins from the mask.
     /// By default (i.e. without this flag), transparent margins are trimmed from all 4 sides.
@@ -151,6 +152,20 @@ impl Display for FolderColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq, Copy)]
+enum FolderColorOrAuto {
+    Auto,
+    Multicolor,
+    Blue,
+    Graphite,
+    Green,
+    Orange,
+    Pink,
+    Purple,
+    Red,
+    Yellow,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]
@@ -300,7 +315,12 @@ pub fn get_options() -> Options {
         Some(SetIconUsingOrAuto::Fileicon) => SetIconUsing::Fileicon,
         _ => SetIconUsing::Osascript,
     };
-    if folder_style != FolderStyle::Tahoe && args.folder_color != FolderColor::Multicolor {
+    if folder_style != FolderStyle::Tahoe
+        && !matches!(
+            args.folder_color,
+            FolderColorOrAuto::Auto | FolderColorOrAuto::Multicolor
+        )
+    {
         eprintln!(
             "Folder tint variants are only available for Tahoe. \
 Ignoring `--folder-color`."
@@ -325,11 +345,81 @@ Ignoring `--folder-color`."
     }
 }
 
-fn normalized_folder_color(folder_style: FolderStyle, folder_color: FolderColor) -> FolderColor {
+fn normalized_folder_color(
+    folder_style: FolderStyle,
+    folder_color: FolderColorOrAuto,
+) -> FolderColor {
     if folder_style != FolderStyle::Tahoe {
         return FolderColor::Multicolor;
     }
+
+    match folder_color {
+        FolderColorOrAuto::Auto => current_system_folder_color(),
+        FolderColorOrAuto::Multicolor => FolderColor::Multicolor,
+        FolderColorOrAuto::Blue => FolderColor::Blue,
+        FolderColorOrAuto::Graphite => FolderColor::Graphite,
+        FolderColorOrAuto::Green => FolderColor::Green,
+        FolderColorOrAuto::Orange => FolderColor::Orange,
+        FolderColorOrAuto::Pink => FolderColor::Pink,
+        FolderColorOrAuto::Purple => FolderColor::Purple,
+        FolderColorOrAuto::Red => FolderColor::Red,
+        FolderColorOrAuto::Yellow => FolderColor::Yellow,
+    }
+}
+
+fn current_system_folder_color() -> FolderColor {
+    let icon_appearance_theme = read_global_default("AppleIconAppearanceTheme");
+    if !icon_appearance_theme
+        .as_deref()
+        .is_some_and(|theme| theme.starts_with("Tinted"))
+    {
+        return FolderColor::Multicolor;
+    }
+
+    let Some(accent_color_string) = read_global_default("AppleAccentColor") else {
+        eprintln!("Could not compute auto folder color. Assuming multicolor.");
+        return FolderColor::Multicolor;
+    };
+
+    let Some(folder_color) = parse_system_accent_color(&accent_color_string) else {
+        eprintln!(
+            "Could not map the system accent color to a Tahoe folder tint. \
+Assuming multicolor."
+        );
+        return FolderColor::Multicolor;
+    };
+
     folder_color
+}
+
+fn read_global_default(key: &str) -> Option<String> {
+    let output = Command::new("/usr/bin/env")
+        .args(["defaults", "read", "-g", key])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = from_utf8(&output.stdout).ok()?.trim().to_owned();
+    if stdout.is_empty() {
+        return None;
+    }
+    Some(stdout)
+}
+
+fn parse_system_accent_color(accent_color: &str) -> Option<FolderColor> {
+    match accent_color.trim().parse::<i32>().ok()? {
+        -1 => Some(FolderColor::Graphite),
+        0 => Some(FolderColor::Red),
+        1 => Some(FolderColor::Orange),
+        2 => Some(FolderColor::Yellow),
+        3 => Some(FolderColor::Green),
+        4 => Some(FolderColor::Blue),
+        5 => Some(FolderColor::Purple),
+        6 => Some(FolderColor::Pink),
+        _ => None,
+    }
 }
 
 fn map_color_scheme_auto(
@@ -387,7 +477,15 @@ fn current_macOS_version() -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::args::FolderifyArgs;
+    use crate::args::{
+        current_system_folder_color,
+        normalized_folder_color,
+        parse_system_accent_color,
+        FolderColor,
+        FolderColorOrAuto,
+        FolderStyle,
+        FolderifyArgs,
+    };
 
     // https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#testing
     #[test]
@@ -395,5 +493,47 @@ mod tests {
         use clap::CommandFactory;
 
         FolderifyArgs::command().debug_assert();
+    }
+
+    #[test]
+    fn test_system_accent_color_mapping() {
+        assert_eq!(parse_system_accent_color("-1"), Some(FolderColor::Graphite));
+        assert_eq!(parse_system_accent_color("0"), Some(FolderColor::Red));
+        assert_eq!(parse_system_accent_color("1"), Some(FolderColor::Orange));
+        assert_eq!(parse_system_accent_color("2"), Some(FolderColor::Yellow));
+        assert_eq!(parse_system_accent_color("3"), Some(FolderColor::Green));
+        assert_eq!(parse_system_accent_color("4"), Some(FolderColor::Blue));
+        assert_eq!(parse_system_accent_color("5"), Some(FolderColor::Purple));
+        assert_eq!(parse_system_accent_color("6"), Some(FolderColor::Pink));
+        assert_eq!(parse_system_accent_color("99"), None);
+    }
+
+    #[test]
+    fn test_non_tahoe_folder_color_is_always_multicolor() {
+        assert_eq!(
+            normalized_folder_color(FolderStyle::BigSur, FolderColorOrAuto::Auto),
+            FolderColor::Multicolor
+        );
+        assert_eq!(
+            normalized_folder_color(FolderStyle::BigSur, FolderColorOrAuto::Purple),
+            FolderColor::Multicolor
+        );
+    }
+
+    #[test]
+    fn test_auto_folder_color_matches_current_system_expectations() {
+        let current = current_system_folder_color();
+        assert!(matches!(
+            current,
+            FolderColor::Multicolor
+                | FolderColor::Blue
+                | FolderColor::Graphite
+                | FolderColor::Green
+                | FolderColor::Orange
+                | FolderColor::Pink
+                | FolderColor::Purple
+                | FolderColor::Red
+                | FolderColor::Yellow
+        ));
     }
 }

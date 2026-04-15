@@ -42,6 +42,14 @@ test("Help flag lists `--folder-color`.", async () => {
   expect(await stdoutFor(["--help"])).toMatch("--folder-color");
 });
 
+test("Help flag lists `auto` as the default folder color.", async () => {
+  const stdout = await stdoutFor(["--help"]);
+  expect(stdout).toMatch("[default: auto]");
+  expect(stdout).toMatch(
+    "[possible values: auto, multicolor, blue, graphite, green, orange, pink, purple, red, yellow]",
+  );
+});
+
 test("Generate icon file", async () => {
   await shellOut([EXAMPLES.join("src/apple.png")]);
   expect(await EXAMPLES.join("src/apple.icns").existsAsFile()).toBe(true);
@@ -106,6 +114,14 @@ test("Test that Tahoe `--folder-color multicolor` is accepted.", async () => {
   await shellOut([
     ["--macOS", "26"],
     ["--folder-color", "multicolor"],
+    EXAMPLES.join("src/apple.png"),
+  ]);
+});
+
+test("Test that Tahoe `--folder-color auto` is accepted.", async () => {
+  await shellOut([
+    ["--macOS", "26"],
+    ["--folder-color", "auto"],
     EXAMPLES.join("src/apple.png"),
   ]);
 });

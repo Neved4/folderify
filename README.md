@@ -41,10 +41,10 @@ By default, `folderify` uses your system's current light/dark mode. Use `--color
 folderify --color-scheme dark mask.png
 ```
 
-On macOS Tahoe, the default folder color is `multicolor`. Use `--folder-color` to switch to one of the tinted Tahoe folder variants:
+On macOS Tahoe, `folderify` uses your current system icon theme color by default. Use `--folder-color` to override it:
 
 ```shell
-folderify --macOS 26 --folder-color blue mask.png
+folderify --macOS 26 --folder-color auto mask.png
 ```
 
 Note:
@@ -175,11 +175,12 @@ Options:
           [possible values: auto, light, dark]
 
       --folder-color <FOLDER_COLOR>
-          Tahoe folder color. `multicolor` keeps the default macOS folder look,
-          while the tinted variants use Tahoe's tinted folder rendering
+          Tahoe folder color. `auto` matches the current Tahoe icon theme color,
+          `multicolor` keeps the default macOS folder look, and the tinted
+          variants use Tahoe's tinted folder rendering
           
-          [default: multicolor]
-          [possible values: multicolor, blue, graphite, green, orange, pink, purple, red, yellow]
+          [default: auto]
+          [possible values: auto, multicolor, blue, graphite, green, orange, pink, purple, red, yellow]
 
       --no-trim
           Don't trim margins from the mask.
